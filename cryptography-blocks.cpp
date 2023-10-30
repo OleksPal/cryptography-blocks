@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <sstream>
 #include <tuple>
+#include <fstream>
 
 using namespace std;
 
@@ -72,11 +73,6 @@ private:
         {"63", "7c", "77", "7b", "f2", "6b", "6f", "c5", "30", "01", "67", "2b", "fe", "d7", "ab", "76"},
         {"ca", "82", "c9", "7d", "fa", "59", "47", "f0", "ad", "d4", "a2", "af", "9c", "a4", "72", "c0"}
     };
-    string decryption_mask[16][16] =
-    {
-        {"52", "09", "6a", "d5", "30", "36", "a5", "38", "bf", "40", "a3", "9e", "81", "f3", "d7", "fb"},
-        {"4"},
-    };
 
     tuple<int, int> getPositionInTable() {
         int row = 0, col = 0;
@@ -87,7 +83,37 @@ private:
 
         return { row, col };
     }
+
+    string intToHex(int row, int column) {
+        std::stringstream ss;
+        ss << std::hex << row << column;
+        string res(ss.str());
+
+        return res;
+    }     
 public:
+    /*void createDecryptionMask() {
+        static string decryption_mask[2][16];
+
+        for (int j = 0; j < 2 * 16; j++) {
+            auto iter = find(reinterpret_cast<string*>(encryption_mask),
+                reinterpret_cast<string*>(encryption_mask) + 2 * 16,
+                intToHex(j / 16, j % 16));
+
+            if (iter != reinterpret_cast<string*>(encryption_mask) + 2 * 16)
+            {
+                size_t n = distance(reinterpret_cast<string*>(encryption_mask), iter);
+                decryption_mask[j / 16][j % 16] = "";
+            }
+        }
+
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 16; j++) {
+                cout << decryption_mask[i][j] << endl;
+            }
+        }
+    }*/
+
     void setBytes(string input) {
         if (input.length() == 2) { // set through hex value
             stringstream ss;
@@ -115,6 +141,25 @@ public:
     }
 
     void encrypt() {
+        string encryption_mask2[16][16];
+        ifstream iFile;
+        iFile.open("Forward-S-box-table.txt");
+
+        for (int i = 0; i < 16; i++) {
+            for (int j = 0; j < 16; j++) {
+                iFile >> encryption_mask2[i][j];
+            }
+        }
+
+        iFile.close();
+
+        for (int i = 0; i < 16; i++) {
+            for (int j = 0; j < 16; j++) {
+                cout << encryption_mask2[i][j] << " ";
+            }
+            cout << endl;
+        }
+
         auto position = getPositionInTable();
         int row = get<0>(position);
         int column = get<1>(position);
@@ -126,8 +171,6 @@ public:
         auto position = getPositionInTable();
         int row = get<0>(position);
         int column = get<1>(position);
-
-        setBytes(decryption_mask[row][column]);
     }
 };
 

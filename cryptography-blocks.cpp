@@ -1,5 +1,4 @@
 #include <iostream>
-#include <algorithm>
 #include <sstream>
 #include <tuple>
 #include <fstream>
@@ -8,113 +7,150 @@ using namespace std;
 
 class PBlock {
 private:
-    unsigned char bytes[8] = { 0,0,0,0,0,0,0,0 };
-    unsigned char encryption_mask[8] = { 0,7,2,5,6,1,3,4 };
+    int bits[8] = { 0,0,0,0,0,0,0,0 };
+    int permutationOrder[8] = { 0,7,2,5,6,1,3,4 };
 
-    unsigned char* copyBytes() {
-        static unsigned char copy[8];
+    int* copyBits() {
+        static int copy[8];
 
         for (int i = 0; i < 8; i++)
-            copy[i] = bytes[i];
+            copy[i] = bits[i];
 
         return copy;
     }
 
-    unsigned char* createDecryptionMask() {
-        static unsigned char decryption_mask[8];
+    int* createRevesePermutationOrder() {
+        static int revesePermutationOrder[8];
 
         for (int i = 0; i < 8; i++)
         {
-            auto iter = find(encryption_mask, encryption_mask + 7, i);
-            if (iter != encryption_mask + 8)
-                decryption_mask[i] = distance(encryption_mask, iter);
+            auto iter = find(permutationOrder, permutationOrder + 7, i);
+            if (iter != permutationOrder + 8)
+                revesePermutationOrder[i] = distance(permutationOrder, iter);
         }
 
-        return decryption_mask;
+        return revesePermutationOrder;
     }
 
 public:
-    void setBytes(string input) {
+    void setBits(string input) {
         if (input.length() == 8) {
             for (int i = 0; i < 8; i++)
-                bytes[i] = input[i];
+                bits[i] = input[i] - '0';
         }
     }
     
-    string getBytes() {
+    string getBits() {
         string output = "";
         for (int i = 0; i < 8; i++)
-            output += bytes[i];
+            output += bits[i] + '0';
 
         return output;
     }
 
-    void encrypt() {
-        unsigned char* old_bytes = copyBytes();
-
-        for (int i = 0; i < 8; i++)
-            bytes[i] = old_bytes[encryption_mask[i]];
+    void setPermutationOrder(string input) {
+        if (input.length() == 8) {
+            for (int i = 0; i < 8; i++)
+                permutationOrder[i] = input[i] - '0';
+        }
     }
 
-    void decrypt() {
-        unsigned char* decryption_mask = createDecryptionMask();
-        unsigned char* old_bytes = copyBytes();
+    string getPermutationOrder() {
+        string output = "";
+        for (int i = 0; i < 8; i++)
+            output += permutationOrder[i] + '0';
+
+        return output;
+    }
+
+    void transform() {
+        int* oldBits = copyBits();
 
         for (int i = 0; i < 8; i++)
-            bytes[i] = old_bytes[decryption_mask[i]];
+            bits[i] = oldBits[permutationOrder[i]];
+    }
+
+    void reverseTransform() {
+        int* revesePermutationOrder = createRevesePermutationOrder();
+        int* oldBits = copyBits();
+
+        for (int i = 0; i < 8; i++)
+            bits[i] = oldBits[revesePermutationOrder[i]];
     }
 };
 
 class SBlock {
 private:
-    int bytes[8] = { 0,0,0,0,0,0,0,0 };
-    string encryption_mask[16][16] =
-    {
-        {"63", "7c", "77", "7b", "f2", "6b", "6f", "c5", "30", "01", "67", "2b", "fe", "d7", "ab", "76"},
-        {"ca", "82", "c9", "7d", "fa", "59", "47", "f0", "ad", "d4", "a2", "af", "9c", "a4", "72", "c0"}
-    };
+    int bits[8] = { 0,0,0,0,0,0,0,0 };
+    string** permutationTable = NULL;
 
     tuple<int, int> getPositionInTable() {
         int row = 0, col = 0;
         for (int i = 0; i < 4; i++) {
-            row += bytes[i] * pow(2, 3 - i);
-            col += bytes[i + 4] * pow(2, 3 - i);
+            row += bits[i] * pow(2, 3 - i);
+            col += bits[i + 4] * pow(2, 3 - i);
         }
 
         return { row, col };
     }
 
-    string intToHex(int row, int column) {
-        std::stringstream ss;
-        ss << std::hex << row << column;
+    string coordinatesToHex(int row, int column) {
+        stringstream ss;
+        ss << hex << row << column;
         string res(ss.str());
 
         return res;
-    }     
-public:
-    /*void createDecryptionMask() {
-        static string decryption_mask[2][16];
+    } 
 
-        for (int j = 0; j < 2 * 16; j++) {
-            auto iter = find(reinterpret_cast<string*>(encryption_mask),
-                reinterpret_cast<string*>(encryption_mask) + 2 * 16,
-                intToHex(j / 16, j % 16));
+    int hexToInt(char value) {
+        stringstream ss;
+        ss << hex << value;
+        int result;
+        ss >> result;
 
-            if (iter != reinterpret_cast<string*>(encryption_mask) + 2 * 16)
-            {
-                size_t n = distance(reinterpret_cast<string*>(encryption_mask), iter);
-                decryption_mask[j / 16][j % 16] = "";
-            }
-        }
+        return result;
+    }
 
-        for (int i = 0; i < 2; i++) {
+    string** createPermutationTable(string path) {
+        string** permutationTable = new string * [16];
+        ifstream iFile;
+        iFile.open(path);
+
+        for (int i = 0; i < 16; i++) {
+            permutationTable[i] = new string[16];
             for (int j = 0; j < 16; j++) {
-                cout << decryption_mask[i][j] << endl;
+                iFile >> permutationTable[i][j];
             }
         }
-    }*/
 
-    void setBytes(string input) {
+        iFile.close();
+
+        return permutationTable;
+    }
+
+    string** createReversePermutationTable() {
+        string** reversePermutationTable = new string * [16];
+
+        for (int i = 0; i < 16; i++) { // initialization of 2d array
+            reversePermutationTable[i] = new string[16];
+        }
+
+        for (int i = 0; i < 16; i++) {
+            reversePermutationTable[i] = new string[16];
+            for (int j = 0; j < 16; j++) {
+                int row = hexToInt(permutationTable[i][j][0]);
+                int column = hexToInt(permutationTable[i][j][1]);
+                reversePermutationTable[row][column] = coordinatesToHex(i, j);
+            }
+        }
+
+        return reversePermutationTable;
+    }    
+public:
+    void setBits(string input) {
+        if (input.length() == 3 && input[2] == ' ') // remove excessive space
+            input.pop_back();
+
         if (input.length() == 2) { // set through hex value
             stringstream ss;
             ss << hex << input;
@@ -122,73 +158,78 @@ public:
             unsigned int n;
             while (ss >> n) {
                 for (int i = 0; i < 8; i++)
-                    bytes[7 - i] = ((n >> i) & 1) ? 1 : 0;
+                    bits[7 - i] = ((n >> i) & 1) ? 1 : 0;
             }
-        }
-
-        if (input.length() == 8) { // set through binary value
+        }       
+        else if (input.length() == 8) { // set through binary value
             for (int i = 0; i < 8; i++)
-                bytes[i] = input[i] - '0';
+                bits[i] = input[i] - '0';
         }        
     }
 
-    string getBytes() {
+    string getBits() {
         string output = "";
         for (int i = 0; i < 8; i++)
-            output += bytes[i] + '0';
+            output += bits[i] + '0';
 
         return output;
     }
 
-    void encrypt() {
-        string encryption_mask2[16][16];
-        ifstream iFile;
-        iFile.open("Forward-S-box-table.txt");
-
-        for (int i = 0; i < 16; i++) {
-            for (int j = 0; j < 16; j++) {
-                iFile >> encryption_mask2[i][j];
-            }
-        }
-
-        iFile.close();
-
-        for (int i = 0; i < 16; i++) {
-            for (int j = 0; j < 16; j++) {
-                cout << encryption_mask2[i][j] << " ";
-            }
-            cout << endl;
-        }
-
-        auto position = getPositionInTable();
-        int row = get<0>(position);
-        int column = get<1>(position);
-
-        setBytes(encryption_mask[row][column]);
+    void setPermutationTable(string path) {
+        permutationTable = createPermutationTable(path);
     }
 
-    void decrypt() {
+    string getPermutationTable() {
+        string output = "";
+        for (int i = 0; i < 16; i++)
+        {
+            for (int j = 0; j < 16; j++) {
+                output += permutationTable[i][j] += " ";
+            }
+            output += "\n";
+        }
+
+        return output;
+    }
+
+    void transform() {
         auto position = getPositionInTable();
         int row = get<0>(position);
         int column = get<1>(position);
+
+        setBits(permutationTable[row][column]);
+    }
+
+    void reverseTransform() {
+        string** reversePermutationTable = createReversePermutationTable();
+
+        auto position = getPositionInTable();
+        int row = get<0>(position);
+        int column = get<1>(position);
+
+        setBits(reversePermutationTable[row][column]);
     }
 };
 
 int main()
 {
-    /*PBlock p;
-    p.setBytes("01100110");
-    cout << p.getBytes() << endl;
-    p.encrypt();
-    cout << p.getBytes() << endl;
-    p.decrypt();
-    cout << p.getBytes();*/
+    PBlock pb;
+    pb.setBits("10100110");
+    cout << "P-Block original bits: " << pb.getBits() << endl;
+    pb.setPermutationOrder("27016354");
+    cout << "P-Block permutation order: " << pb.getPermutationOrder() << endl;
+    pb.transform();
+    cout << "P-Block transformed bits: " << pb.getBits() << endl;
+    pb.reverseTransform();
+    cout << "P-Block bits after reverse transformation: " << pb.getBits() << endl;
 
     SBlock sb;
-    sb.setBytes("00001001");
-    cout << sb.getBytes() << endl;
-    sb.encrypt();
-    cout << sb.getBytes() << endl;
-    sb.decrypt();
-    cout << sb.getBytes() << endl;
+    sb.setBits("11100111");
+    cout << "S-Block original bits: " << sb.getBits() << endl;
+    sb.setPermutationTable("Forward-S-box-table.txt");
+    cout << "S-Block permutation table: \n" << sb.getPermutationTable() << endl;
+    sb.transform();
+    cout << "S-Block transformed bits: " << sb.getBits() << endl;
+    sb.reverseTransform();
+    cout << "S-Block bits after reverse transformation: " << sb.getBits() << endl;
 }

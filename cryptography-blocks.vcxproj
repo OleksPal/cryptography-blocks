@@ -127,7 +127,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="cryptography-blocks.cpp" />
+    <ClCompile Include="CryptographyBlocks.cpp" />
+    <ClCompile Include="PBlock.cpp" />
+    <ClCompile Include="SBlock.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="PBlock.h" />
+    <ClInclude Include="SBlock.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
